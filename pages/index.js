@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Link from "next/link";
 
 export default function Home() {
   const [username, setUsername] = useState("");
@@ -45,7 +46,23 @@ export default function Home() {
 
   return (
     <div style={{ maxWidth: 640, margin: "0 auto", padding: "20px 16px", fontFamily: "sans-serif" }}>
-      <h1 style={{ fontSize: 24, fontWeight: "bold", marginBottom: 20 }}>🧵 Thead Feed</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <h1 style={{ fontSize: 24, fontWeight: "bold", margin: 0 }}>🧵 Thead Feed</h1>
+        <Link
+          href="/debate"
+          style={{
+            padding: "7px 14px",
+            borderRadius: 8,
+            background: "#f3f4f6",
+            color: "#111",
+            textDecoration: "none",
+            fontSize: 14,
+            fontWeight: 600,
+          }}
+        >
+          🤖 Multi-LLM 토론
+        </Link>
+      </div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
         <input
