@@ -39,17 +39,17 @@ async function callGemini(model, systemPrompt, messages) {
 function buildAgents() {
   const agents = [];
   if (process.env.ANTHROPIC_API_KEY) {
-    const haikuSystem = "당신은 논리적이고 체계적인 분석가 AI입니다. 질문을 명확하게 구조화하고 핵심 근거를 바탕으로 간결하게 답변하세요. 300자 이내로 작성하세요.";
-    const sonnetSystem = "당신은 깊이 사고하는 비판적 사상가 AI입니다. 표면적 답변을 넘어 본질적 의미와 숨겨진 가정을 탐구하세요. 다양한 시각을 300자 이내로 제시하세요.";
+    const haikuSystem = "당신은 논리적이고 체계적인 분석가 AI입니다. 300자 이내로 답변하세요.";
+    const sonnetSystem = "당신은 깊이 사고하는 비판적 사상가 AI입니다. 300자 이내로 답변하세요.";
     agents.push({ id: "claude-analyst", name: "Claude 분석가", emoji: "🔵", badge: "Haiku", call: (msgs) => callAnthropic("claude-haiku-4-5-20251001", haikuSystem, msgs) });
     agents.push({ id: "claude-thinker", name: "Claude 사색가", emoji: "🟣", badge: "Sonnet", call: (msgs) => callAnthropic("claude-sonnet-4-6", sonnetSystem, msgs) });
   }
   if (process.env.OPENAI_API_KEY) {
-    const gptSystem = "당신은 실용적이고 현실 중심의 AI입니다. 실제로 적용 가능한 해결책과 구체적인 예시를 중심으로 300자 이내로 답변하세요.";
+    const gptSystem = "당신은 실용적이고 현실 중심의 AI입니다. 300자 이내로 답변하세요.";
     agents.push({ id: "gpt-pragmatist", name: "GPT 실용주의자", emoji: "🟢", badge: "GPT-4o-mini", call: (msgs) => callOpenAI("gpt-4o-mini", gptSystem, msgs) });
   }
   if (process.env.GEMINI_API_KEY) {
-    const geminiSystem = "당신은 다양한 분야를 연결하는 종합적 사고를 하는 AI입니다. 다른 영역과의 유사점과 패턴을 찾아 통합적 시각을 300자 이내로 제공하세요.";
+    const geminiSystem = "당신은 다양한 분야를 연결하는 종합적 사고를 하는 AI입니다. 300자 이내로 답변하세요.";
     agents.push({ id: "gemini-connector", name: "Gemini 연결자", emoji: "🟡", badge: "Gemini Flash", call: (msgs) => callGemini("gemini-1.5-flash", geminiSystem, msgs) });
   }
   return agents;
@@ -57,6 +57,13 @@ function buildAgents() {
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
+
+  // APP_SECRET 검증
+  const secret = req.headers['x-app-secret'];
+  if (!secret || secret !== process.env.APP_SECRET) {
+    return res.status(403).json({ error: '접근 권한이 없습니다.' });
+  }
+
   const { question } = req.body;
   if (!question?.trim()) return res.status(400).json({ error: "question 필요" });
 
@@ -87,7 +94,7 @@ export default async function handler(req, res) {
       const messages = [
         { role: "user", content: question },
         { role: "assistant", content: round1[agent.id] },
-        { role: "user", content: `다른 AI들의 답변을 읽었습니다. 동의하거나 보완할 점, 또는 반론이 있다면 자신의 관점을 정제해 300자 이내로 답변하세요.\n\n${othersText}` },
+        { role: "user", content: `다른 AI들의 답변을 읽었습니다. 동의하거나 보완할 점, 반론이 있다면 300자 이내로 정제해 답변하세요.\n\n${othersText}` },
       ];
       send("thinking", { agentId: agent.id, agentName: agent.name, emoji: agent.emoji, round: 2 });
       const text = await agent.call(messages);
@@ -98,7 +105,7 @@ export default async function handler(req, res) {
     send("status", { message: "최종 종합 중..." });
     const allContext = agents.map((a) => `[${a.name}]\n• 1라운드: ${round1[a.id]}\n• 2라운드: ${round2[a.id]}`).join("\n\n---\n\n");
     const synthAgent = agents.find((a) => a.id === "claude-thinker") || agents[0];
-    const synthText = await synthAgent.call([{ role: "user", content: `질문: ${question}\n\n아래는 여러 AI의 토론 기록입니다. 이를 종합해 가장 완전한 최종 답변을 작성하세요.\n\n${allContext}` }]);
+    const synthText = await synthAgent.call([{ role: "user", content: `질문: ${question}\n\n아래는 여러 AI의 토론 기록입니다. 종합해 최종 답변을 작성하세요.\n\n${allContext}` }]);
     send("synthesis", { text: synthText });
     send("done", {});
   } catch (e) {

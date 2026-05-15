@@ -1,4 +1,10 @@
 export default async function handler(req, res) {
+  // APP_SECRET 검증
+  const secret = req.headers['x-app-secret'];
+  if (!secret || secret !== process.env.APP_SECRET) {
+    return res.status(403).json({ error: '접근 권한이 없습니다.' });
+  }
+
   const { username } = req.query;
   if (!username) return res.status(400).json({ error: "username 필요" });
 
